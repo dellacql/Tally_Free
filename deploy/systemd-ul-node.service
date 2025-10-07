@@ -1,0 +1,16 @@
+[Unit]
+Description=Unity Ledger Node
+After=network-online.target
+
+[Service]
+WorkingDirectory=/opt/unity-ledger
+EnvironmentFile=/opt/unity-ledger/example.env
+ExecStart=/usr/bin/env RUST_LOG=info /opt/unity-ledger/target/release/ul-node \
+  --db ${UL_DB} --keystore ${UL_KEYSTORE} --password "${UL_PASSWORD}" \
+  --listen ${UL_LISTEN} --dial ${UL_DIAL} run
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
