@@ -1,4 +1,4 @@
-# Unity Ledger — Complete Guide (Networking & Operations)
+# Tally_Free — Complete Guide (Networking & Operations)
 
 A minimal, fee-less blockchain prototype written in Rust with **libp2p** networking (QUIC + Gossipsub + Kademlia + AutoNAT + DCUtR). The design enforces a fixed total supply of **1.0** (internally **10^45 units**, i.e., 45 decimal places). Nodes hold the state DB; wallets hold keys. Transactions are binary (A→B) with **no protocol fees**.
 
