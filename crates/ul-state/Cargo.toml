@@ -12,3 +12,6 @@ blake3 = "1"
 num-bigint = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 ul_types = { package = "ul-types", path = "../ul-types" }
+trie-db   = { version = "0.30", default-features = false }
+rlp       = "0.5"
+tiny-keccak = { version = "2.0", features = ["keccak"] }

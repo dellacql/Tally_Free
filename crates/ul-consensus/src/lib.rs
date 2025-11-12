@@ -2,6 +2,7 @@ use anyhow::Result;
 use ul_state::ChainState;
 use ul_types::*;
 use num_bigint::BigUint;
+use ul_types::{Block, AccountId};
 
 pub const THRESHOLD_BP: u64 = 7200; // 72.00% (10000 bp = 100%)
 pub const EPOCH_MS: u64 = 2_000;

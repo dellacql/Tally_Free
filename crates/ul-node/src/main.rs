@@ -1,21 +1,20 @@
-use anyhow::{Result, anyhow, ensure};              // <-- macros + Result
-use num_bigint::BigUint;                            // BigUint
-use std::collections::{HashMap, HashSet, BTreeMap}; // maps/sets
-use std::time::{Duration, SystemTime, UNIX_EPOCH};  // timers
-use libp2p::Multiaddr;                              // multiaddr
-use ed25519_dalek::{VerifyingKey, Signature as DalekSignature, Verifier}; // ed25519 verify
-use ul_crypto::Keypair;                             // your keypair
-use ul_p2p::{Net, Wire, start as p2p_start};        // p2p types + start()
-use blake3::hash;                                   // blake3::hash()
-use sled::CompareAndSwapError;                      // CAS error for sled
-use hex::encode as hex_encode;    
+use anyhow::{Result, anyhow, ensure};
+use num_bigint::BigUint;
+use std::collections::{HashMap, HashSet, BTreeMap};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use libp2p::Multiaddr;
+use ed25519_dalek::{VerifyingKey, Signature as DalekSignature, Verifier};
+use ul_crypto::Keypair;
+use ul_p2p::{Net, Wire, start as p2p_start};
+use blake3::hash;
+use sled::CompareAndSwapError;
+use hex::encode as hex_encode;
 use clap::{Parser, Subcommand, Args};
 use std::path::PathBuf;
 use std::{fs, io::{self, Read}};
 use rpassword::prompt_password;
 use serde::{Serialize, Deserialize};
 
-// -------- password options & resolver --------
 #[derive(Debug, Args, Clone)]
 struct SecretCli {
     #[arg(long)]
@@ -43,8 +42,6 @@ fn get_password(secret: &SecretCli, prompt: &str) -> anyhow::Result<String> {
     }
     Ok(prompt_password(prompt)?)
 }
-
-
 
 #[derive(Debug, Parser, Clone)]
 #[command(name = "ul-node", version, about = "Unity-Ledger node")]
@@ -81,33 +78,37 @@ enum Command {
     Run,
 }
 
-
 #[derive(Args, Debug, Clone)]
-struct StakeArgs { 
-    #[arg(long)] amount: String 
+struct StakeArgs {
+    #[arg(long)]
+    amount: String,
 }
 
 #[derive(Args, Debug, Clone)]
-struct CreateAccountArgs { 
-    #[arg(long)] addr_hex32: String 
+struct CreateAccountArgs {
+    #[arg(long)]
+    addr_hex32: String,
 }
 
 #[derive(Args, Debug, Clone)]
-struct TransferArgs { 
-    #[arg(long)] to_hex32: String, 
-    #[arg(long)] amount: String 
+struct TransferArgs {
+    #[arg(long)]
+    to_hex32: String,
+    #[arg(long)]
+    amount: String,
 }
 
 #[derive(Args, Debug, Clone)]
-struct BalanceArgs { 
-    #[arg(long)] addr_hex32: Option<String> 
+struct BalanceArgs {
+    #[arg(long)]
+    addr_hex32: Option<String>,
 }
 
 #[derive(Args, Debug, Clone)]
-struct PrintBlocksArgs { 
-    #[arg(long, default_value_t = 20)] last: usize 
+struct PrintBlocksArgs {
+    #[arg(long, default_value_t = 20)]
+    last: usize,
 }
-
 
 /* ---------------- Block + Tx ---------------- */
 
@@ -124,6 +125,31 @@ struct Block {
     ts: u64,
     txs: Vec<Tx>,
     tx_ids: Vec<[u8; 32]>, // blake3(tx_bytes) in order
+    state_root: [u8; 32],
+    tx_root: [u8; 32],
+}
+
+/* ---------------- Merkle helper ---------------- */
+
+/// Compute a simple Merkle root over a list of 32‑byte hashes using blake3.
+/// If there is an odd number of leaves, the last hash is duplicated.
+fn merkle_root_hashes(mut leaves: Vec<[u8; 32]>) -> [u8; 32] {
+    if leaves.is_empty() {
+        return [0u8; 32];
+    }
+    while leaves.len() > 1 {
+        let mut next = Vec::with_capacity((leaves.len() + 1) / 2);
+        for pair in leaves.chunks(2) {
+            let h = if pair.len() == 2 {
+                hash(&[pair[0].as_slice(), pair[1].as_slice()].concat()).into()
+            } else {
+                pair[0]
+            };
+            next.push(h);
+        }
+        leaves = next;
+    }
+    leaves[0]
 }
 
 /* ---------------- Main ---------------- */
@@ -145,19 +171,16 @@ async fn main() -> Result<()> {
             println!("✔ genesis initialized at {}", &cli.db);
             Ok(())
         }
-
         Command::Stake(a) => {
             stake(&cli.db, &my_account, &parse_amount_units(&a.amount)?)?;
             println!("✔ staked {}", a.amount);
             Ok(())
         }
-
         Command::CreateAccount(a) => {
             let addr = parse_hex32(&a.addr_hex32)?;
             let tx = Tx::CreateAccount { addr };
             enqueue_tx_and_gossip(&cli, &kp, tx)
         }
-
         Command::Transfer(a) => {
             let to = parse_hex32(&a.to_hex32)?;
             let tx = Tx::Transfer {
@@ -167,33 +190,32 @@ async fn main() -> Result<()> {
             };
             enqueue_tx_and_gossip(&cli, &kp, tx)
         }
-
         Command::Balance(a) => {
-            let who = if let Some(h) = a.addr_hex32.as_ref() { parse_hex32(h)? } else { my_account };
+            let who = if let Some(h) = a.addr_hex32.as_ref() {
+                parse_hex32(h)?
+            } else {
+                my_account
+            };
             let dec = load_balance_decimal(&cli.db, who)?;
             println!("{dec}");
             Ok(())
         }
-
         Command::PrintBlocks(a) => {
             print_blocks(&cli.db, a.last)?;
             Ok(())
         }
-
-        Command::Run => {
-            do_run(&cli, &kp).await
-        }
+        Command::Run => do_run(&cli, &kp).await,
     }
 }
-
-
 
 /* ---------------- Run: consensus ---------------- */
 
 async fn do_run(cli: &Cli, kp: &Keypair) -> Result<()> {
     let listen = cli.listen.as_deref().map(parse_multiaddr).transpose()?;
     let mut bootstrap = Vec::new();
-    for d in &cli.dial { bootstrap.push(parse_multiaddr(d)?); }
+    for d in &cli.dial {
+        bootstrap.push(parse_multiaddr(d)?);
+    }
     let mut net: Net = p2p_start(listen, bootstrap).await?;
     println!("p2p started; waiting for events…");
 
@@ -323,7 +345,9 @@ fn do_genesis(db_path: &str, my_account: &[u8; 32]) -> Result<()> {
     db.open_tree("blocks")?;
     db.open_tree("mempool")?;
 
-    if meta.get("height")?.is_some() { return Err(anyhow!("genesis refused: DB already initialized (meta.height exists)")); }
+    if meta.get("height")?.is_some() {
+        return Err(anyhow!("genesis refused: DB already initialized (meta.height exists)"));
+    }
 
     meta.insert("height", 0u64.to_be_bytes().to_vec())?;
     meta.insert("parent", [0u8; 32].to_vec())?;
@@ -331,6 +355,51 @@ fn do_genesis(db_path: &str, my_account: &[u8; 32]) -> Result<()> {
     admins.insert(my_account, &[])?;
     db.flush()?;
     Ok(())
+}
+
+fn compute_state_root_for_block(db_path: &str, blk: &Block) -> Result<[u8; 32]> {
+    // open balances tree and load existing balances into a BTreeMap
+    let db = sled::open(db_path)?;
+    let balances = db.open_tree("balances")?;
+    let mut shadow: BTreeMap<[u8; 32], BigUint> = BTreeMap::new();
+    for kv in balances.iter() {
+        let (k, v) = kv?;
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&k);
+        let val = if v.is_empty() {
+            BigUint::from(0u32)
+        } else {
+            BigUint::from_bytes_be(v.as_ref())
+        };
+        shadow.insert(key, val);
+    }
+    // apply the block’s transactions to the shadow state
+    for tx in &blk.txs {
+        match tx {
+            Tx::CreateAccount { addr } => {
+                shadow.entry(*addr).or_insert(BigUint::from(0u32));
+            }
+            Tx::Transfer { from, to, amount_units_be } => {
+                let amt = BigUint::from_bytes_be(amount_units_be);
+                let f = shadow.get_mut(from).ok_or_else(|| anyhow!("from not found"))?;
+                ensure!(*f >= amt, "insufficient funds");
+                *f -= &amt;
+                let t = shadow.entry(*to).or_insert(BigUint::from(0u32));
+                *t += amt;
+            }
+        }
+    }
+    // serialize the state into a byte buffer in key order
+    let mut buf: Vec<u8> = Vec::new();
+    for (k, v) in &shadow {
+        buf.extend_from_slice(&k[..]);
+        let vb = v.to_bytes_be();
+        // store length prefix to avoid collisions when concatenating
+        buf.extend_from_slice(&(vb.len() as u32).to_be_bytes());
+        buf.extend_from_slice(&vb);
+    }
+    // hash with blake3
+    Ok(blake3::hash(&buf).into())
 }
 
 fn stake(db_path: &str, who: &[u8; 32], amount: &BigUint) -> Result<()> {
@@ -370,35 +439,54 @@ fn enqueue_tx(db_path: &str, tx: Tx) -> Result<()> {
 /// Try to build a block from mempool; returns (Block, bytes, hash).
 fn build_block_from_mempool(db_path: &str) -> Result<Option<(Block, Vec<u8>, [u8; 32])>> {
     let db = sled::open(db_path)?;
+    let mempool = db.open_tree("mempool")?;
     let meta = db.open_tree("meta")?;
-    let mp = db.open_tree("mempool")?;
+    // read current height and parent
     let (height, parent) = read_meta(&meta)?;
-
-    // collect up to N txs
-    const N: usize = 64;
-    let mut txs = Vec::new();
-    let mut tx_ids = Vec::new();
-    for kv in mp.iter().take(N) {
-        let (k, v) = kv?;
-        let tx: Tx = bincode::deserialize(v.as_ref())?;
+    // gather txs from mempool and compute total amount of transfers
+    let mut txs: Vec<Tx> = Vec::new();
+    let mut tx_ids: Vec<[u8; 32]> = Vec::new();
+    let mut total_transfers = BigUint::from(0u32);
+    for kv in mempool.iter() {
+        let (_k, v) = kv?;
+        let tx: Tx = bincode::deserialize(&v)?;
+        if let Tx::Transfer { amount_units_be, .. } = &tx {
+            total_transfers += BigUint::from_bytes_be(&amount_units_be);
+        }
+        tx_ids.push(hash(&v).into());
         txs.push(tx);
-        let mut id = [0u8; 32];
-        id.copy_from_slice(&k);
-        tx_ids.push(id);
     }
-    if txs.is_empty() { return Ok(None); }
-
-    let blk = Block {
+    if txs.is_empty() {
+        return Ok(None);
+    }
+    // compute tx_root as Merkle root over tx_ids
+    let tx_root = merkle_root_hashes(tx_ids.clone());
+    // check proposer stake; skip proposal if transfers exceed stake
+    // In practice this function should take the proposer’s stake as a parameter.
+    // As a placeholder we read the proposer’s stake from the local DB using the
+    // identity derived from an empty key; callers must update this code to
+    // correctly identify their own account.
+    let my_acct = acct_from_vk(blake3::hash(&[]).as_bytes());
+    let my_stake = get_stake(db_path, my_acct);
+    if total_transfers > my_stake {
+        return Ok(None);
+    }
+    // construct block with zero state_root; will be filled in below
+    let mut blk = Block {
         height: height + 1,
         parent,
         ts: now_secs(),
-        txs,
-        tx_ids,
+        txs: txs.clone(),
+        tx_ids: tx_ids.clone(),
+        state_root: [0u8; 32],
+        tx_root,
     };
-
-    // dry-run: verify it applies and preserves supply
+    // dry-run: verify block applies
     verify_block_application(db_path, &blk)?;
-
+    // compute state root and update block
+    let root = compute_state_root_for_block(db_path, &blk)?;
+    blk.state_root = root;
+    // serialize and hash
     let bytes = bincode::serialize(&blk)?;
     let bh = hash(&bytes).into();
     Ok(Some((blk, bytes, bh)))
@@ -451,8 +539,13 @@ fn verify_block_application(db_path: &str, blk: &Block) -> Result<()> {
     let mut shadow: BTreeMap<[u8; 32], BigUint> = BTreeMap::new();
     for kv in balances.iter() {
         let (k, v) = kv?;
-        let mut key = [0u8; 32]; key.copy_from_slice(&k);
-        let val = if v.is_empty() { BigUint::from(0u32) } else { BigUint::from_bytes_be(v.as_ref()) };
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&k);
+        let val = if v.is_empty() {
+            BigUint::from(0u32)
+        } else {
+            BigUint::from_bytes_be(v.as_ref())
+        };
         shadow.insert(key, val);
     }
     for tx in &blk.txs {
@@ -472,14 +565,18 @@ fn verify_block_application(db_path: &str, blk: &Block) -> Result<()> {
     }
     // supply invariant
     let mut sum = BigUint::from(0u32);
-    for v in shadow.values() { sum += v.clone(); }
+    for v in shadow.values() {
+        sum += v.clone();
+    }
     ensure!(sum == pow10_big(45), "supply invariant broken");
     Ok(())
 }
 
 /* ---------------- Sign/verify helpers ---------------- */
 
-fn acct_from_vk(vk_bytes: &[u8]) -> [u8; 32] { hash(vk_bytes).into() }
+fn acct_from_vk(vk_bytes: &[u8]) -> [u8; 32] {
+    hash(vk_bytes).into()
+}
 
 fn verify_sig_acct(_kp: &Keypair, _tag: &str, vk: &[u8], sig: &[u8], addr: &[u8; 32]) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(vk.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
@@ -490,7 +587,7 @@ fn verify_sig_acct(_kp: &Keypair, _tag: &str, vk: &[u8], sig: &[u8], addr: &[u8;
     Ok(true)
 }
 
-fn verify_sig_transfer(vk: &[u8], sig: &[u8], from: [u8;32], to: [u8;32], amt: &[u8]) -> Result<bool> {
+fn verify_sig_transfer(vk: &[u8], sig: &[u8], from: [u8; 32], to: [u8; 32], amt: &[u8]) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(vk.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
     let acct = acct_from_vk(vk.as_bytes());
     ensure!(acct == from, "from != blake3(vk)");
@@ -499,7 +596,7 @@ fn verify_sig_transfer(vk: &[u8], sig: &[u8], from: [u8;32], to: [u8;32], amt: &
     Ok(true)
 }
 
-fn verify_block_sig(height: u64, bh: &[u8;32], proposer_vk: &[u8], sig: &[u8], acct: [u8;32]) -> Result<bool> {
+fn verify_block_sig(height: u64, bh: &[u8; 32], proposer_vk: &[u8], sig: &[u8], acct: [u8; 32]) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(proposer_vk.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
     ensure!(acct_from_vk(vk.as_bytes()) == acct, "proposer acct != blake3(vk)");
     let s = DalekSignature::from_slice(sig)?;
@@ -507,7 +604,7 @@ fn verify_block_sig(height: u64, bh: &[u8;32], proposer_vk: &[u8], sig: &[u8], a
     Ok(true)
 }
 
-fn verify_vote_sig(height: u64, bh: &[u8;32], voter_vk: &[u8], sig: &[u8], acct: [u8;32]) -> Result<bool> {
+fn verify_vote_sig(height: u64, bh: &[u8; 32], voter_vk: &[u8], sig: &[u8], acct: [u8; 32]) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(voter_vk.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
     ensure!(acct_from_vk(vk.as_bytes()) == acct, "voter acct != blake3(vk)");
     let s = DalekSignature::from_slice(sig)?;
@@ -515,7 +612,7 @@ fn verify_vote_sig(height: u64, bh: &[u8;32], voter_vk: &[u8], sig: &[u8], acct:
     Ok(true)
 }
 
-fn verify_commit_sig(height: u64, bh: &[u8;32], vk_bytes: &[u8], sig: &[u8]) -> Result<bool> {
+fn verify_commit_sig(height: u64, bh: &[u8; 32], vk_bytes: &[u8], sig: &[u8]) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(vk_bytes.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
     let s = DalekSignature::from_slice(sig)?;
     vk.verify(&[&height.to_be_bytes()[..], &bh[..], b"commit"].concat(), &s).map_err(|e| anyhow!("commit sig fail: {e}"))?;
@@ -524,76 +621,137 @@ fn verify_commit_sig(height: u64, bh: &[u8;32], vk_bytes: &[u8], sig: &[u8]) -> 
 
 /* ---------------- sled/state helpers ---------------- */
 
-fn parse_multiaddr(s: &str) -> Result<Multiaddr> { s.parse().map_err(|e| anyhow!("bad multiaddr: {e}")) }
+fn parse_multiaddr(s: &str) -> Result<Multiaddr> {
+    s.parse().map_err(|e| anyhow!("bad multiaddr: {e}"))
+}
 
 fn read_meta(meta: &sled::Tree) -> Result<(u64, [u8; 32])> {
-    let height = meta.get("height")?.map(|v| u64::from_be_bytes(v.as_ref().try_into().unwrap())).unwrap_or(0);
-    let parent = meta.get("parent")?.map(|v| { let mut p=[0u8;32]; p.copy_from_slice(v.as_ref()); p}).unwrap_or([0u8;32]);
+    let height = meta
+        .get("height")?
+        .map(|v| u64::from_be_bytes(v.as_ref().try_into().unwrap()))
+        .unwrap_or(0);
+    let parent = meta
+        .get("parent")?
+        .map(|v| {
+            let mut p = [0u8; 32];
+            p.copy_from_slice(v.as_ref());
+            p
+        })
+        .unwrap_or([0u8; 32]);
     Ok((height, parent))
 }
 
-fn now_secs() -> u64 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() }
+fn now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
 
 fn pow10_big(exp: u32) -> BigUint {
     let mut n = BigUint::from(1u32);
-    for _ in 0..exp { n *= 10u32; }
+    for _ in 0..exp {
+        n *= 10u32;
+    }
     n
 }
-fn pow10_be(exp: u32) -> Vec<u8> { pow10_big(exp).to_bytes_be() }
+
+fn pow10_be(exp: u32) -> Vec<u8> {
+    pow10_big(exp).to_bytes_be()
+}
 
 fn get_units(tree: &sled::Tree, who: [u8; 32]) -> BigUint {
     if let Ok(Some(v)) = tree.get(who) {
-        if v.is_empty() { BigUint::from(0u32) } else { BigUint::from_bytes_be(v.as_ref()) }
-    } else { BigUint::from(0u32) }
+        if v.is_empty() {
+            BigUint::from(0u32)
+        } else {
+            BigUint::from_bytes_be(v.as_ref())
+        }
+    } else {
+        BigUint::from(0u32)
+    }
 }
+
 fn get_stake(db_path: &str, who: [u8; 32]) -> BigUint {
     let db = sled::open(db_path).expect("db");
     let stake = db.open_tree("stake").expect("stake");
     get_units(&stake, who)
 }
+
 fn total_active_stake(db_path: &str) -> BigUint {
     let db = sled::open(db_path).expect("db");
     let stake = db.open_tree("stake").expect("stake");
     let mut s = BigUint::from(0u32);
     for kv in stake.iter() {
         let (_k, v) = kv.unwrap();
-        if !v.is_empty() { s += BigUint::from_bytes_be(v.as_ref()); }
+        if !v.is_empty() {
+            s += BigUint::from_bytes_be(v.as_ref());
+        }
     }
     s
 }
-
-fn _hex_encode<T: AsRef<[u8]>>(b: T) -> String { hex::encode(b) }
-// account-from-verify-key helper (you used this pattern in multiple checks)
 
 fn load_balance_decimal(db_path: &str, who: [u8; 32]) -> Result<String> {
     let db = sled::open(db_path)?;
     let balances = db.open_tree("balances")?;
     Ok(fmt_amount_1e45(&get_units(&balances, who)))
 }
+
 fn fmt_amount_1e45(n: &BigUint) -> String {
     let scale = pow10_big(45);
     let (q, r) = (n / &scale, n % &scale);
     let int_part = q.to_string();
     let mut frac = r.to_string();
-    if frac.len() < 45 { frac = "0".repeat(45 - frac.len()) + &frac; }
+    if frac.len() < 45 {
+        frac = "0".repeat(45 - frac.len()) + &frac;
+    }
     let frac_trim = frac.trim_end_matches('0').to_string();
-    if frac_trim.is_empty() { int_part } else { format!("{int_part}.{frac_trim}") }
+    if frac_trim.is_empty() {
+        int_part
+    } else {
+        format!("{int_part}.{frac_trim}")
+    }
 }
 
 fn parse_hex32(s: &str) -> Result<[u8; 32]> {
-    let b = hex::decode(s)?; ensure!(b.len()==32,"expected 32 bytes hex");
-    let mut out=[0u8;32]; out.copy_from_slice(&b); Ok(out)
+    let b = hex::decode(s)?;
+    ensure!(b.len() == 32, "expected 32 bytes hex");
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&b);
+    Ok(out)
 }
+
 fn parse_amount_units(s: &str) -> Result<BigUint> {
-    let s=s.trim(); ensure!(!s.is_empty(),"empty amount"); let parts:Vec<&str>=s.split('.').collect(); ensure!(parts.len()<=2,"bad decimal");
-    let whole=parts[0].replace('_',"");
-    let mut frac=if parts.len()==2{parts[1].replace('_',"")}else{"".into()};
-    ensure!(whole.chars().all(|c|c.is_ascii_digit()),"bad digits");
-    ensure!(frac.chars().all(|c|c.is_ascii_digit()),"bad digits");
-    ensure!(frac.len()<=45,"too many fractional digits");
-    while frac.len()<45{ frac.push('0'); }
-    let units = format!("{whole}{frac}").trim_start_matches('0').to_string();
-    Ok(if units.is_empty(){ BigUint::from(0u32) } else { BigUint::parse_bytes(units.as_bytes(),10).unwrap() })
+    let s = s.trim();
+    ensure!(!s.is_empty(), "empty amount");
+    let parts: Vec<&str> = s.split('.').collect();
+    ensure!(parts.len() <= 2, "bad decimal");
+    let whole = parts[0].replace('_', "");
+    let mut frac = if parts.len() == 2 {
+        parts[1].replace('_', "")
+    } else {
+        "".into()
+    };
+    ensure!(
+        whole.chars().all(|c| c.is_ascii_digit()),
+        "bad digits"
+    );
+    ensure!(
+        frac.chars().all(|c| c.is_ascii_digit()),
+        "bad digits"
+    );
+    ensure!(frac.len() <= 45, "too many fractional digits");
+    while frac.len() < 45 {
+        frac.push('0');
+    }
+    let units = format!("{whole}{frac}")
+        .trim_start_matches('0')
+        .to_string();
+    Ok(if units.is_empty() {
+        BigUint::from(0u32)
+    } else {
+        BigUint::parse_bytes(units.as_bytes(), 10).unwrap()
+    })
 }
 
 fn print_blocks(db_path: &str, last: usize) -> Result<()> {
@@ -601,10 +759,19 @@ fn print_blocks(db_path: &str, last: usize) -> Result<()> {
     let blocks = db.open_tree("blocks")?;
     let mut keys: Vec<Vec<u8>> = blocks.iter().map(|kv| kv.unwrap().0.to_vec()).collect();
     keys.sort();
-    let start = if last==0 || last>=keys.len() { 0 } else { keys.len()-last };
+    let start = if last == 0 || last >= keys.len() {
+        0
+    } else {
+        keys.len() - last
+    };
     for k in &keys[start..] {
         let v = blocks.get(k)?.unwrap();
-        println!("h={} val_len={} value_hex={}", u64::from_be_bytes(k.as_slice().try_into().unwrap()), v.len(), hex_encode(v));
+        println!(
+            "h={} val_len={} value_hex={}",
+            u64::from_be_bytes(k.as_slice().try_into().unwrap()),
+            v.len(),
+            hex_encode(v)
+        );
     }
     Ok(())
 }

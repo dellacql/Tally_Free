@@ -1,0 +1,1 @@
+{"rustc":7868289081541623310,"features":"[\"std\"]","declared_features":"[\"default\", \"std\"]","target":3375286600160684423,"profile":16503403049695105087,"path":2872640974307518174,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release\\.fingerprint\\hash-db-9335b7bf3bfc3343\\dep-lib-hash_db","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}
