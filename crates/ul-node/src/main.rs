@@ -1,19 +1,22 @@
 use anyhow::{Result, anyhow, ensure};
-use num_bigint::BigUint;
-use std::collections::{HashMap, HashSet, BTreeMap};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use blake3::hash;
+use clap::{Args, Parser, Subcommand};
+use ed25519_dalek::{Signature as DalekSignature, Verifier, VerifyingKey};
+use hex::encode as hex_encode;
 use libp2p::Multiaddr;
-use ed25519_dalek::{VerifyingKey, Signature as DalekSignature, Verifier};
+use num_bigint::BigUint;
+use rpassword::prompt_password;
+use serde::{Deserialize, Serialize};
+use sled::CompareAndSwapError;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::path::PathBuf;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    fs,
+    io::{self, Read},
+};
 use ul_crypto::Keypair;
 use ul_p2p::{Net, Wire, start as p2p_start};
-use blake3::hash;
-use sled::CompareAndSwapError;
-use hex::encode as hex_encode;
-use clap::{Parser, Subcommand, Args};
-use std::path::PathBuf;
-use std::{fs, io::{self, Read}};
-use rpassword::prompt_password;
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Args, Clone)]
 struct SecretCli {
@@ -114,8 +117,14 @@ struct PrintBlocksArgs {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum Tx {
-    CreateAccount { addr: [u8; 32] },
-    Transfer { from: [u8; 32], to: [u8; 32], amount_units_be: Vec<u8> },
+    CreateAccount {
+        addr: [u8; 32],
+    },
+    Transfer {
+        from: [u8; 32],
+        to: [u8; 32],
+        amount_units_be: Vec<u8>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -346,7 +355,9 @@ fn do_genesis(db_path: &str, my_account: &[u8; 32]) -> Result<()> {
     db.open_tree("mempool")?;
 
     if meta.get("height")?.is_some() {
-        return Err(anyhow!("genesis refused: DB already initialized (meta.height exists)"));
+        return Err(anyhow!(
+            "genesis refused: DB already initialized (meta.height exists)"
+        ));
     }
 
     meta.insert("height", 0u64.to_be_bytes().to_vec())?;
@@ -379,9 +390,15 @@ fn compute_state_root_for_block(db_path: &str, blk: &Block) -> Result<[u8; 32]> 
             Tx::CreateAccount { addr } => {
                 shadow.entry(*addr).or_insert(BigUint::from(0u32));
             }
-            Tx::Transfer { from, to, amount_units_be } => {
+            Tx::Transfer {
+                from,
+                to,
+                amount_units_be,
+            } => {
                 let amt = BigUint::from_bytes_be(amount_units_be);
-                let f = shadow.get_mut(from).ok_or_else(|| anyhow!("from not found"))?;
+                let f = shadow
+                    .get_mut(from)
+                    .ok_or_else(|| anyhow!("from not found"))?;
                 ensure!(*f >= amt, "insufficient funds");
                 *f -= &amt;
                 let t = shadow.entry(*to).or_insert(BigUint::from(0u32));
@@ -431,7 +448,9 @@ fn enqueue_tx(db_path: &str, tx: Tx) -> Result<()> {
     let res = mp.compare_and_swap(key.clone(), None::<&[u8]>, Some(bytes))?;
     match res {
         Ok(()) => Ok(()),
-        Err(CompareAndSwapError { current: Some(_), .. }) => Ok(()), // already present
+        Err(CompareAndSwapError {
+            current: Some(_), ..
+        }) => Ok(()), // already present
         Err(e) => Err(anyhow!("mempool CAS: {e:?}")),
     }
 }
@@ -450,7 +469,10 @@ fn build_block_from_mempool(db_path: &str) -> Result<Option<(Block, Vec<u8>, [u8
     for kv in mempool.iter() {
         let (_k, v) = kv?;
         let tx: Tx = bincode::deserialize(&v)?;
-        if let Tx::Transfer { amount_units_be, .. } = &tx {
+        if let Tx::Transfer {
+            amount_units_be, ..
+        } = &tx
+        {
             total_transfers += BigUint::from_bytes_be(&amount_units_be);
         }
         tx_ids.push(hash(&v).into());
@@ -493,11 +515,20 @@ fn build_block_from_mempool(db_path: &str) -> Result<Option<(Block, Vec<u8>, [u8
 }
 
 /// Verify proposal and stage (no commit yet). Returns true if OK.
-fn verify_and_stage_block(db_path: &str, height: u64, parent: [u8; 32], block_bytes: &[u8], block_hash: &[u8; 32]) -> Result<bool> {
+fn verify_and_stage_block(
+    db_path: &str,
+    height: u64,
+    parent: [u8; 32],
+    block_bytes: &[u8],
+    block_hash: &[u8; 32],
+) -> Result<bool> {
     let blk: Block = bincode::deserialize(block_bytes)?;
     ensure!(blk.height == height, "height mismatch");
     ensure!(blk.parent == parent, "parent mismatch to proposal meta");
-    ensure!(hash(block_bytes).as_bytes() == block_hash, "block hash mismatch");
+    ensure!(
+        hash(block_bytes).as_bytes() == block_hash,
+        "block hash mismatch"
+    );
     verify_block_application(db_path, &blk)?;
     Ok(true)
 }
@@ -553,9 +584,15 @@ fn verify_block_application(db_path: &str, blk: &Block) -> Result<()> {
             Tx::CreateAccount { addr } => {
                 shadow.entry(*addr).or_insert(BigUint::from(0u32));
             }
-            Tx::Transfer { from, to, amount_units_be } => {
+            Tx::Transfer {
+                from,
+                to,
+                amount_units_be,
+            } => {
                 let amt = BigUint::from_bytes_be(amount_units_be);
-                let f = shadow.get_mut(from).ok_or_else(|| anyhow!("from not found"))?;
+                let f = shadow
+                    .get_mut(from)
+                    .ok_or_else(|| anyhow!("from not found"))?;
                 ensure!(*f >= amt, "insufficient funds");
                 *f -= &amt;
                 let t = shadow.entry(*to).or_insert(BigUint::from(0u32));
@@ -578,7 +615,13 @@ fn acct_from_vk(vk_bytes: &[u8]) -> [u8; 32] {
     hash(vk_bytes).into()
 }
 
-fn verify_sig_acct(_kp: &Keypair, _tag: &str, vk: &[u8], sig: &[u8], addr: &[u8; 32]) -> Result<bool> {
+fn verify_sig_acct(
+    _kp: &Keypair,
+    _tag: &str,
+    vk: &[u8],
+    sig: &[u8],
+    addr: &[u8; 32],
+) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(vk.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
     let acct = acct_from_vk(vk.as_bytes());
     ensure!(&acct == addr, "addr != blake3(vk)");
@@ -587,35 +630,69 @@ fn verify_sig_acct(_kp: &Keypair, _tag: &str, vk: &[u8], sig: &[u8], addr: &[u8;
     Ok(true)
 }
 
-fn verify_sig_transfer(vk: &[u8], sig: &[u8], from: [u8; 32], to: [u8; 32], amt: &[u8]) -> Result<bool> {
+fn verify_sig_transfer(
+    vk: &[u8],
+    sig: &[u8],
+    from: [u8; 32],
+    to: [u8; 32],
+    amt: &[u8],
+) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(vk.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
     let acct = acct_from_vk(vk.as_bytes());
     ensure!(acct == from, "from != blake3(vk)");
     let s = DalekSignature::from_slice(sig)?;
-    vk.verify(&[&from[..], &to[..], amt].concat(), &s).map_err(|e| anyhow!("sig fail: {e}"))?;
+    vk.verify(&[&from[..], &to[..], amt].concat(), &s)
+        .map_err(|e| anyhow!("sig fail: {e}"))?;
     Ok(true)
 }
 
-fn verify_block_sig(height: u64, bh: &[u8; 32], proposer_vk: &[u8], sig: &[u8], acct: [u8; 32]) -> Result<bool> {
+fn verify_block_sig(
+    height: u64,
+    bh: &[u8; 32],
+    proposer_vk: &[u8],
+    sig: &[u8],
+    acct: [u8; 32],
+) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(proposer_vk.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
-    ensure!(acct_from_vk(vk.as_bytes()) == acct, "proposer acct != blake3(vk)");
+    ensure!(
+        acct_from_vk(vk.as_bytes()) == acct,
+        "proposer acct != blake3(vk)"
+    );
     let s = DalekSignature::from_slice(sig)?;
-    vk.verify(&[&height.to_be_bytes()[..], &bh[..]].concat(), &s).map_err(|e| anyhow!("proposal sig fail: {e}"))?;
+    vk.verify(&[&height.to_be_bytes()[..], &bh[..]].concat(), &s)
+        .map_err(|e| anyhow!("proposal sig fail: {e}"))?;
     Ok(true)
 }
 
-fn verify_vote_sig(height: u64, bh: &[u8; 32], voter_vk: &[u8], sig: &[u8], acct: [u8; 32]) -> Result<bool> {
+fn verify_vote_sig(
+    height: u64,
+    bh: &[u8; 32],
+    voter_vk: &[u8],
+    sig: &[u8],
+    acct: [u8; 32],
+) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(voter_vk.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
-    ensure!(acct_from_vk(vk.as_bytes()) == acct, "voter acct != blake3(vk)");
+    ensure!(
+        acct_from_vk(vk.as_bytes()) == acct,
+        "voter acct != blake3(vk)"
+    );
     let s = DalekSignature::from_slice(sig)?;
-    vk.verify(&[&height.to_be_bytes()[..], &bh[..], &[1u8][..]].concat(), &s).map_err(|e| anyhow!("vote sig fail: {e}"))?;
+    vk.verify(
+        &[&height.to_be_bytes()[..], &bh[..], &[1u8][..]].concat(),
+        &s,
+    )
+    .map_err(|e| anyhow!("vote sig fail: {e}"))?;
     Ok(true)
 }
 
 fn verify_commit_sig(height: u64, bh: &[u8; 32], vk_bytes: &[u8], sig: &[u8]) -> Result<bool> {
     let vk = VerifyingKey::from_bytes(vk_bytes.try_into().map_err(|_| anyhow!("bad vk len"))?)?;
     let s = DalekSignature::from_slice(sig)?;
-    vk.verify(&[&height.to_be_bytes()[..], &bh[..], b"commit"].concat(), &s).map_err(|e| anyhow!("commit sig fail: {e}"))?;
+    vk.verify(
+        &[&height.to_be_bytes()[..], &bh[..], b"commit"].concat(),
+        &s,
+    )
+    .map_err(|e| anyhow!("commit sig fail: {e}"))?;
     Ok(true)
 }
 
@@ -732,21 +809,13 @@ fn parse_amount_units(s: &str) -> Result<BigUint> {
     } else {
         "".into()
     };
-    ensure!(
-        whole.chars().all(|c| c.is_ascii_digit()),
-        "bad digits"
-    );
-    ensure!(
-        frac.chars().all(|c| c.is_ascii_digit()),
-        "bad digits"
-    );
+    ensure!(whole.chars().all(|c| c.is_ascii_digit()), "bad digits");
+    ensure!(frac.chars().all(|c| c.is_ascii_digit()), "bad digits");
     ensure!(frac.len() <= 45, "too many fractional digits");
     while frac.len() < 45 {
         frac.push('0');
     }
-    let units = format!("{whole}{frac}")
-        .trim_start_matches('0')
-        .to_string();
+    let units = format!("{whole}{frac}").trim_start_matches('0').to_string();
     Ok(if units.is_empty() {
         BigUint::from(0u32)
     } else {

@@ -1,8 +1,11 @@
-use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 use ul_types::AccountId;
 
-pub struct Keypair { pub sk: SigningKey, pub vk: VerifyingKey }
+pub struct Keypair {
+    pub sk: SigningKey,
+    pub vk: VerifyingKey,
+}
 
 impl Keypair {
     pub fn random() -> Self {

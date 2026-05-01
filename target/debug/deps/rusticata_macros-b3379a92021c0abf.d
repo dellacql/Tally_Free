@@ -1,0 +1,9 @@
+C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\deps\rusticata_macros-b3379a92021c0abf.d: C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\lib.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\combinator.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\debug.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\macros.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\traits.rs
+
+C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\deps\librusticata_macros-b3379a92021c0abf.rmeta: C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\lib.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\combinator.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\debug.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\macros.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\traits.rs
+
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\lib.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\combinator.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\debug.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\macros.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rusticata-macros-4.1.0\src\traits.rs:

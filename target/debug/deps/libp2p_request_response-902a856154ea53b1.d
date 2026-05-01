@@ -1,0 +1,8 @@
+C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\deps\libp2p_request_response-902a856154ea53b1.d: C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\lib.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\codec.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\handler.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\handler\protocol.rs
+
+C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\deps\liblibp2p_request_response-902a856154ea53b1.rmeta: C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\lib.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\codec.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\handler.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\handler\protocol.rs
+
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\lib.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\codec.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\handler.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.27.0\src\handler\protocol.rs:

@@ -1,9 +1,9 @@
-use anyhow::{Result, ensure, anyhow};
-use ul_types::*;
-use sled::Db;
-use std::collections::{BTreeMap, BTreeSet};
+use anyhow::{Result, anyhow, ensure};
 use num_bigint::BigUint;
 use num_traits::Zero;
+use sled::Db;
+use std::collections::{BTreeMap, BTreeSet};
+use ul_types::*;
 
 /// Simple key/value chain state backed by sled.  See `mpt.rs` for the
 /// Merkle‑Patricia trie helpers.
@@ -16,14 +16,16 @@ pub mod mpt;
 #[derive(Clone, Default)]
 pub struct Snapshot {
     pub balances: BTreeMap<AccountId, Amount>,
-    pub stake:    BTreeMap<AccountId, Amount>,
-    pub admins:   BTreeSet<AccountId>,
+    pub stake: BTreeMap<AccountId, Amount>,
+    pub admins: BTreeSet<AccountId>,
 }
 
 impl ChainState {
     /// Open or create a database at the given path.
     pub fn open(path: &str) -> Result<Self> {
-        Ok(Self { db: sled::open(path)? })
+        Ok(Self {
+            db: sled::open(path)?,
+        })
     }
 
     /// Initialize the genesis state if it hasn’t been done yet.
@@ -40,10 +42,7 @@ impl ChainState {
             bincode::serialize(&Amount(TOTAL_SUPPLY.clone()))?,
         )?;
         let admins = self.db.open_tree("admins")?;
-        admins.insert(
-            bincode::serialize(&owner)?,
-            bincode::serialize(&true)?,
-        )?;
+        admins.insert(bincode::serialize(&owner)?, bincode::serialize(&true)?)?;
         // Set height=0 and parent=0 root.
         self.set_height_parent(0, [0u8; 32])?;
         Ok(())
@@ -54,17 +53,13 @@ impl ChainState {
         let mut ss = Snapshot::default();
         for kv in self.db.open_tree("bal")?.iter() {
             let (k, v) = kv?;
-            ss.balances.insert(
-                bincode::deserialize(&k)?,
-                bincode::deserialize(&v)?,
-            );
+            ss.balances
+                .insert(bincode::deserialize(&k)?, bincode::deserialize(&v)?);
         }
         for kv in self.db.open_tree("stake")?.iter() {
             let (k, v) = kv?;
-            ss.stake.insert(
-                bincode::deserialize(&k)?,
-                bincode::deserialize(&v)?,
-            );
+            ss.stake
+                .insert(bincode::deserialize(&k)?, bincode::deserialize(&v)?);
         }
         for kv in self.db.open_tree("admins")?.iter() {
             let (k, _v) = kv?;
@@ -80,14 +75,10 @@ impl ChainState {
         let ss = self.get_snapshot()?;
         let mut leaves: Vec<[u8; 32]> = Vec::new();
         for (acct, amt) in ss.balances.iter() {
-            leaves.push(
-                blake3::hash(&bincode::serialize(&(acct, &amt.0))?).into(),
-            );
+            leaves.push(blake3::hash(&bincode::serialize(&(acct, &amt.0))?).into());
         }
         for (acct, st) in ss.stake.iter() {
-            leaves.push(
-                blake3::hash(&bincode::serialize(&(acct, &st.0, true))?).into(),
-            );
+            leaves.push(blake3::hash(&bincode::serialize(&(acct, &st.0, true))?).into());
         }
         if leaves.is_empty() {
             return Ok([0u8; 32]);
@@ -104,7 +95,7 @@ impl ChainState {
         ensure!(tot == *TOTAL_SUPPLY, "supply changed");
         let blocks = self.db.open_tree("blocks")?;
         blocks.insert(b.header.height.to_be_bytes(), bincode::serialize(&b)?)?;
-        self.set_height_parent(b.header.height, b.header.parent)?;
+        self.set_height_parent(b.header.height, b.header.parent_hash)?;
         Ok(())
     }
 

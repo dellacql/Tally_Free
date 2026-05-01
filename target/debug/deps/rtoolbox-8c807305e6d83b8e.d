@@ -1,0 +1,10 @@
+C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\deps\rtoolbox-8c807305e6d83b8e.d: C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\lib.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\atty.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\fix_line_issues.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\print_tty.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\safe_string.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\safe_vec.rs
+
+C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\deps\librtoolbox-8c807305e6d83b8e.rmeta: C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\lib.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\atty.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\fix_line_issues.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\print_tty.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\safe_string.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\safe_vec.rs
+
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\lib.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\atty.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\fix_line_issues.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\print_tty.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\safe_string.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rtoolbox-0.0.3\src\safe_vec.rs:

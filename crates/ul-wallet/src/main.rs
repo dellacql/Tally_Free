@@ -1,22 +1,26 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use ul_keystore as ks;
+use rpassword::prompt_password;
 use std::fs;
 use std::io::{self, Read};
 use std::path::PathBuf;
-use rpassword::prompt_password;
+use ul_keystore as ks;
 
 #[derive(Parser)]
 struct Args {
-    #[arg(long, default_value="./keystore.json")]
+    #[arg(long, default_value = "./keystore.json")]
     keystore: String,
-    #[arg(long, default_value="")]
+    #[arg(long, default_value = "")]
     password: String,
     #[command(subcommand)]
-    cmd: Cmd
+    cmd: Cmd,
 }
 #[derive(Subcommand)]
-enum Cmd { New, Address, ExportVk }
+enum Cmd {
+    New,
+    Address,
+    ExportVk,
+}
 
 fn main() -> Result<()> {
     let a = Args::parse();
@@ -36,7 +40,6 @@ fn main() -> Result<()> {
     }
     Ok(())
 }
-
 
 /// Common CLI fields for secret handling
 #[derive(Debug, Parser)]
@@ -81,4 +84,3 @@ fn get_password(secret: &SecretCli, prompt: &str) -> Result<String> {
     let s = prompt_password(prompt)?;
     Ok(s)
 }
-

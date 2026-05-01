@@ -3306,15 +3306,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ul-capacity"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "blake3",
+ "serde",
+ "serde_json",
+ "ul-types",
+]
+
+[[package]]
 name = "ul-consensus"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bincode",
- "blake3",
  "num-bigint",
- "rand 0.8.5",
- "ul-state",
+ "num-traits",
+ "serde",
+ "ul-ledger",
  "ul-types",
 ]
 
@@ -3362,6 +3372,35 @@ dependencies = [
  "serde_json",
  "ul-crypto",
  "zeroize",
+]
+
+[[package]]
+name = "ul-ledger"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "argon2",
+ "bincode",
+ "blake3",
+ "chacha20poly1305",
+ "hex",
+ "num-bigint",
+ "num-traits",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "sled",
+ "ul-types",
+]
+
+[[package]]
+name = "ul-mempool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "sled",
+ "ul-types",
 ]
 
 [[package]]
@@ -3434,13 +3473,14 @@ dependencies = [
 name = "ul-types"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bincode",
  "blake3",
+ "hex",
  "num-bigint",
  "num-traits",
  "once_cell",
  "serde",
- "serde_json",
 ]
 
 [[package]]

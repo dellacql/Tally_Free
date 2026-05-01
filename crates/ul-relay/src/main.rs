@@ -1,9 +1,5 @@
-use libp2p::{
-    identity, relay,
-    Multiaddr, Swarm, SwarmBuilder,
-    swarm::SwarmEvent,
-};
-use libp2p::futures::StreamExt; // for .next()
+use libp2p::futures::StreamExt;
+use libp2p::{Multiaddr, Swarm, SwarmBuilder, identity, relay, swarm::SwarmEvent}; // for .next()
 
 #[tokio::main]
 async fn main() {

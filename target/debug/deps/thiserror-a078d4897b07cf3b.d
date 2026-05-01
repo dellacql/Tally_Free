@@ -1,0 +1,12 @@
+C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\deps\thiserror-a078d4897b07cf3b.d: C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\build\thiserror-13197be51d99b4de\out/private.rs
+
+C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\deps\libthiserror-a078d4897b07cf3b.rmeta: C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\build\thiserror-13197be51d99b4de\out/private.rs
+
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs:
+C:\Users\Lucian\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs:
+C:\Users\Lucian\tally\tally_chain\Tally_Free\target\debug\build\thiserror-13197be51d99b4de\out/private.rs:
+
+# env-dep:OUT_DIR=C:\\Users\\Lucian\\tally\\tally_chain\\Tally_Free\\target\\debug\\build\\thiserror-13197be51d99b4de\\out

@@ -1,6 +1,6 @@
+use rlp::RlpStream;
 use std::collections::BTreeMap;
 use tiny_keccak::{Hasher, Keccak};
-use rlp::RlpStream;
 
 /// Compute a binary Merkle root over a list of 32‑byte hashes.
 /// If there is an odd number of leaves, duplicate the last hash at each level.
@@ -39,9 +39,7 @@ fn merkle_root(mut leaves: Vec<[u8; 32]>) -> [u8; 32] {
 /// Accounts must implement `BalanceGetter` so their balance/stake fields can be
 /// encoded.  Adjust this trait or the RLP encoding as needed to match your
 /// account structure.
-pub fn build_state_trie<T: BalanceGetter>(
-    accounts: &BTreeMap<[u8; 32], T>,
-) -> [u8; 32] {
+pub fn build_state_trie<T: BalanceGetter>(accounts: &BTreeMap<[u8; 32], T>) -> [u8; 32] {
     // Collect leaf hashes: hash(key || rlp(account))
     let mut leaves: Vec<[u8; 32]> = Vec::with_capacity(accounts.len());
     for (addr, account) in accounts {
@@ -67,7 +65,7 @@ pub fn build_state_trie<T: BalanceGetter>(
 /// Implement this for your account struct wherever that struct is defined.
 /// For example:
 ///
-/// ```rust
+/// ```rust,ignore
 /// use num_traits::ToPrimitive;
 /// use ul_state::mpt::BalanceGetter;
 ///

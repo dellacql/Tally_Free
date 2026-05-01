@@ -1,0 +1,13 @@
+[package]
+name = "ul-consensus"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+rand = "0.8"
+bincode = "1"
+blake3 = "1"
+num-bigint = { version = "0.4", features = ["serde"] }
+ul_types = { package = "ul-types", path = "../ul-types" }
+ul_state = { package = "ul-state", path = "../ul-state" }

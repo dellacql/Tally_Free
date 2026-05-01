@@ -1,17 +1,21 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use libp2p::{
-    autonat, dcutr, gossipsub,
-    gossipsub::{IdentTopic, Message, MessageAuthenticity},
-    identify, identity, kad,
+    Multiaddr,
+    Swarm, // <-- add Swarm
+    autonat,
+    dcutr,
     futures::StreamExt,
+    gossipsub,
+    gossipsub::{IdentTopic, Message, MessageAuthenticity},
+    identify,
+    identity,
+    kad,
+    multiaddr::Protocol, // already added earlier
     swarm::{NetworkBehaviour, SwarmEvent},
-    Multiaddr, Swarm,     // <-- add Swarm
-    multiaddr::Protocol,             // already added earlier
 };
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::time::Duration;
-
 
 pub const TOPIC_STR: &str = "unity-ledger-v1";
 
@@ -20,8 +24,8 @@ pub enum Wire {
     // Client transactions
     TxCreateAccount {
         addr: [u8; 32],
-        vk: Vec<u8>,              // sender vk (so others can verify AccountId if needed)
-        sig: Vec<u8>,             // sig(addr)
+        vk: Vec<u8>,  // sender vk (so others can verify AccountId if needed)
+        sig: Vec<u8>, // sig(addr)
     },
     TxTransfer {
         from: [u8; 32],
@@ -35,27 +39,27 @@ pub enum Wire {
     Proposal {
         height: u64,
         parent: [u8; 32],
-        block_bytes: Vec<u8>,     // bincode(Block)
-        block_hash: [u8; 32],     // blake3(block_bytes)
+        block_bytes: Vec<u8>, // bincode(Block)
+        block_hash: [u8; 32], // blake3(block_bytes)
         proposer_account: [u8; 32],
         proposer_vk: Vec<u8>,
-        proposer_sig: Vec<u8>,    // sig(height||block_hash)
+        proposer_sig: Vec<u8>, // sig(height||block_hash)
     },
     Vote {
         height: u64,
         block_hash: [u8; 32],
         accept: bool,
         voter_account: [u8; 32],
-        voter_stake_be: Vec<u8>,  // BigUint bytes
+        voter_stake_be: Vec<u8>, // BigUint bytes
         voter_vk: Vec<u8>,
-        voter_sig: Vec<u8>,       // sig(height||block_hash||accept)
+        voter_sig: Vec<u8>, // sig(height||block_hash||accept)
     },
     Commit {
         height: u64,
         block_hash: [u8; 32],
         committer_account: [u8; 32],
         committer_vk: Vec<u8>,
-        committer_sig: Vec<u8>,   // sig(height||block_hash||"commit")
+        committer_sig: Vec<u8>, // sig(height||block_hash||"commit")
     },
 }
 
@@ -116,7 +120,7 @@ pub async fn start(listen: Option<Multiaddr>, bootstrap: Vec<Multiaddr>) -> Resu
             .build()
             .map_err(|e| anyhow!("gossipsub config: {e}"))?; // map error
         gossipsub::Behaviour::new(MessageAuthenticity::Signed(kp.clone()), cfg)
-            .map_err(|e| anyhow!("gossipsub new: {e}"))?      // map error
+            .map_err(|e| anyhow!("gossipsub new: {e}"))? // map error
     };
     let topic = IdentTopic::new(TOPIC_STR);
     gsb.subscribe(&topic)?;
@@ -180,4 +184,3 @@ pub async fn start(listen: Option<Multiaddr>, bootstrap: Vec<Multiaddr>) -> Resu
         inbox: VecDeque::new(),
     })
 }
-

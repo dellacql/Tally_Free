@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand, Args, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use num_bigint::BigUint;
 use sled::{Db, Tree};
 use std::path::Path;
@@ -37,10 +37,10 @@ enum Decode {
 }
 
 #[derive(Parser, Debug)]
-#[command(name="ul-inspect", about="Unity Ledger inspector (read-only)")]
+#[command(name = "ul-inspect", about = "Unity Ledger inspector (read-only)")]
 struct Cli {
     /// Path to the node database directory (the --db you used when running ul-node)
-    #[arg(long, value_name="PATH")]
+    #[arg(long, value_name = "PATH")]
     db: String,
 
     /// Override tree names (only if you changed defaults in the node)
@@ -84,7 +84,7 @@ struct BalancesArgs {
     #[arg(long, value_enum, default_value_t=Decode::Hex)]
     decode: Decode,
     /// Print as JSON
-    #[arg(long, default_value_t=false)]
+    #[arg(long, default_value_t = false)]
     json: bool,
 }
 
@@ -94,7 +94,7 @@ struct ScanArgs {
     limit: usize,
     #[arg(long, value_enum, default_value_t=Decode::Hex)]
     decode: Decode,
-    #[arg(long, default_value_t=false)]
+    #[arg(long, default_value_t = false)]
     json: bool,
 }
 
@@ -102,7 +102,7 @@ struct ScanArgs {
 struct ScanAdminsArgs {
     #[arg(long, default_value_t = 50)]
     limit: usize,
-    #[arg(long, default_value_t=false)]
+    #[arg(long, default_value_t = false)]
     json: bool,
 }
 
@@ -111,7 +111,7 @@ struct BlocksArgs {
     /// Show the last N keys by lexicographic order
     #[arg(long, default_value_t = 20)]
     last: usize,
-    #[arg(long, default_value_t=false)]
+    #[arg(long, default_value_t = false)]
     json: bool,
 }
 
@@ -129,7 +129,9 @@ fn main() -> Result<()> {
 
     match cli.cmd {
         Command::Status => cmd_status(&db, &trees),
-        Command::Balances(args) => cmd_scan_kv(&db, &trees.balances, args.limit, args.decode, args.json),
+        Command::Balances(args) => {
+            cmd_scan_kv(&db, &trees.balances, args.limit, args.decode, args.json)
+        }
         Command::Stake(args) => cmd_scan_kv(&db, &trees.stake, args.limit, args.decode, args.json),
         Command::Admins(args) => cmd_scan_admins(&db, &trees.admins, args.limit, args.json),
         Command::Blocks(args) => cmd_blocks(&db, &trees.blocks, args.last, args.json),
@@ -143,7 +145,8 @@ fn open_db(path: &str) -> Result<Db> {
 }
 
 fn open_tree(db: &Db, name: &str) -> Result<Tree> {
-    db.open_tree(name).with_context(|| format!("opening tree '{name}'"))
+    db.open_tree(name)
+        .with_context(|| format!("opening tree '{name}'"))
 }
 
 fn cmd_status(db: &Db, trees: &Trees) -> Result<()> {
@@ -153,24 +156,25 @@ fn cmd_status(db: &Db, trees: &Trees) -> Result<()> {
     let admins = db.open_tree(&trees.admins)?;
     let blocks = db.open_tree(&trees.blocks)?;
 
-    let height = meta.get("height")?
-        .and_then(|ivec| {
-            let bytes: [u8;8] = ivec.as_ref().try_into().ok()?;
-            Some(u64::from_be_bytes(bytes))
-        });
+    let height = meta.get("height")?.and_then(|ivec| {
+        let bytes: [u8; 8] = ivec.as_ref().try_into().ok()?;
+        Some(u64::from_be_bytes(bytes))
+    });
 
-    let parent_hex = meta.get("parent")?
-        .map(|ivec| hex::encode(ivec.as_ref()));
+    let parent_hex = meta.get("parent")?.map(|ivec| hex::encode(ivec.as_ref()));
 
     println!("== Status ==");
     println!("DB: <opened>");
-    println!("Height: {}", height.map(|h| h.to_string()).unwrap_or("unknown".into()));
+    println!(
+        "Height: {}",
+        height.map(|h| h.to_string()).unwrap_or("unknown".into())
+    );
     println!("Parent: {}", parent_hex.unwrap_or("<none>".into()));
     println!("Trees:");
     println!("  {}: {} entries", trees.balances, count_entries(&balances));
-    println!("  {}: {} entries", trees.stake,    count_entries(&stake));
-    println!("  {}: {} entries", trees.admins,   count_entries(&admins));
-    println!("  {}: {} entries", trees.blocks,   count_entries(&blocks));
+    println!("  {}: {} entries", trees.stake, count_entries(&stake));
+    println!("  {}: {} entries", trees.admins, count_entries(&admins));
+    println!("  {}: {} entries", trees.blocks, count_entries(&blocks));
     Ok(())
 }
 
@@ -195,12 +199,18 @@ fn cmd_scan_kv(db: &Db, tree_name: &str, limit: usize, decode: Decode, json: boo
         let key_hex = hex32_or_hex(k.as_ref());
         let val_str = decode_value(v.as_ref(), decode);
         rows.push((key_hex, val_str));
-        if limit != 0 && rows.len() >= limit { break; }
+        if limit != 0 && rows.len() >= limit {
+            break;
+        }
     }
     if json {
         println!("{}", serde_json::to_string_pretty(&rows)?);
     } else {
-        println!("== Tree: {tree_name} (showing {}{}) ==", rows.len(), if limit==0 { "" } else { " (limited)" });
+        println!(
+            "== Tree: {tree_name} (showing {}{}) ==",
+            rows.len(),
+            if limit == 0 { "" } else { " (limited)" }
+        );
         for (k, v) in rows {
             println!("{k}  ->  {v}");
         }
@@ -214,13 +224,22 @@ fn cmd_scan_admins(db: &Db, tree_name: &str, limit: usize, json: bool) -> Result
     for item in t.iter() {
         let (k, _v) = item?;
         rows.push(hex32_or_hex(k.as_ref()));
-        if limit != 0 && rows.len() >= limit { break; }
+        if limit != 0 && rows.len() >= limit {
+            break;
+        }
     }
     if json {
         println!("{}", serde_json::to_string_pretty(&rows)?);
     } else {
-        println!("== Admins: {} (showing {}{}) ==", tree_name, rows.len(), if limit==0 { "" } else { " (limited)" });
-        for k in rows { println!("{k}"); }
+        println!(
+            "== Admins: {} (showing {}{}) ==",
+            tree_name,
+            rows.len(),
+            if limit == 0 { "" } else { " (limited)" }
+        );
+        for k in rows {
+            println!("{k}");
+        }
     }
     Ok(())
 }
@@ -230,7 +249,7 @@ fn cmd_blocks(db: &Db, tree_name: &str, last: usize, json: bool) -> Result<()> {
     let mut keys: Vec<Vec<u8>> = t.iter().map(|kv| kv.unwrap().0.to_vec()).collect();
     keys.sort();
     if last > 0 && keys.len() > last {
-        keys = keys[keys.len()-last..].to_vec();
+        keys = keys[keys.len() - last..].to_vec();
     }
     if json {
         let as_hex: Vec<String> = keys.iter().map(|k| hex::encode(k)).collect();
@@ -245,7 +264,11 @@ fn cmd_blocks(db: &Db, tree_name: &str, last: usize, json: bool) -> Result<()> {
 }
 
 fn hex32_or_hex(bytes: &[u8]) -> String {
-    if bytes.len() == 32 { hex::encode(bytes) } else { hex::encode(bytes) }
+    if bytes.len() == 32 {
+        hex::encode(bytes)
+    } else {
+        hex::encode(bytes)
+    }
 }
 
 fn decode_value(bytes: &[u8], mode: Decode) -> String {
@@ -270,7 +293,9 @@ fn fmt_amount_1e45(n: &BigUint) -> String {
     let mut frac = r.to_string();
     if frac.len() < 45 {
         let mut s = String::with_capacity(45);
-        for _ in 0..(45 - frac.len()) { s.push('0'); }
+        for _ in 0..(45 - frac.len()) {
+            s.push('0');
+        }
         s.push_str(&frac);
         frac = s;
     }
@@ -285,6 +310,8 @@ fn fmt_amount_1e45(n: &BigUint) -> String {
 fn pow10(exp: usize) -> BigUint {
     let ten = BigUint::from(10u32);
     let mut n = BigUint::from(1u32);
-    for _ in 0..exp { n *= &ten; }
+    for _ in 0..exp {
+        n *= &ten;
+    }
     n
 }
