@@ -41,6 +41,7 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
+        .with_ansi(false)
         .with_env_filter(
             std::env::var("RUST_LOG")
                 .unwrap_or_else(|_| "info,libp2p=warn,libp2p_swarm=warn".to_string()),
