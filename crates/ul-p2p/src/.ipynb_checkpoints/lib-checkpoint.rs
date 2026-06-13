@@ -1,12 +1,13 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use libp2p::{
-    Multiaddr, PeerId, Swarm, SwarmBuilder, autonat, dcutr,
+    autonat, dcutr,
     futures::StreamExt,
     gossipsub,
     gossipsub::{IdentTopic, MessageAuthenticity},
     identify, identity, kad,
     multiaddr::Protocol,
     swarm::{NetworkBehaviour, SwarmEvent},
+    Multiaddr, PeerId, Swarm, SwarmBuilder,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -146,11 +147,7 @@ impl Net {
         self.swarm.listeners().map(|a| a.to_string()).collect()
     }
 
-    pub fn publish_message(
-        &mut self,
-        topic_name: &str,
-        payload: NetworkMessage,
-    ) -> Result<[u8; 32]> {
+    pub fn publish_message(&mut self, topic_name: &str, payload: NetworkMessage) -> Result<[u8; 32]> {
         let topic = self
             .topics
             .get(topic_name)
@@ -215,9 +212,7 @@ impl Net {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     tracing::info!("listening on {address}");
                 }
-                SwarmEvent::ConnectionEstablished {
-                    peer_id, endpoint, ..
-                } => {
+                SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                     tracing::info!("connection established peer={peer_id} endpoint={endpoint:?}");
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
@@ -229,11 +224,13 @@ impl Net {
                 SwarmEvent::IncomingConnectionError { error, .. } => {
                     tracing::warn!("incoming connection error error={error}");
                 }
-                SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Message {
-                    message,
-                    propagation_source,
-                    ..
-                })) => {
+                SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(
+                    gossipsub::Event::Message {
+                        message,
+                        propagation_source,
+                        ..
+                    },
+                )) => {
                     let topic = message.topic.to_string();
 
                     match bincode::deserialize::<Envelope>(&message.data) {
@@ -291,7 +288,10 @@ impl Net {
 
 // Backward-compatible start function for the existing ul-node/src/main.rs.
 // Old code calls: p2p_start(listen, bootstrap).await?
-pub async fn start(listen: Option<Multiaddr>, bootstrap: Vec<Multiaddr>) -> Result<Net> {
+pub async fn start(
+    listen: Option<Multiaddr>,
+    bootstrap: Vec<Multiaddr>,
+) -> Result<Net> {
     let listen_addrs = listen.into_iter().collect::<Vec<_>>();
     start_named("ul-node", listen_addrs, bootstrap).await
 }

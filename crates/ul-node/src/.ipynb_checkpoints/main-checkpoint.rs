@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 use tracing::{info, warn};
-use ul_p2p::{KnownPeer, NetworkMessage, topics};
+use ul_p2p::{topics, KnownPeer, NetworkMessage};
 
 #[derive(Debug, Parser)]
 #[command(

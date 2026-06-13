@@ -10,7 +10,7 @@ use ul_p2p::{KnownPeer, NetworkMessage, topics};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "ul-node",
+    name = "ul-node-net-test",
     version,
     about = "Tally Free network protocol test node"
 )]
@@ -49,11 +49,14 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    let listen: Vec<Multiaddr> = cli
-        .listen
-        .iter()
-        .map(|s| s.parse())
-        .collect::<Result<Vec<_>, _>>()?;
+    let listen: Vec<Multiaddr> = if cli.listen.is_empty() {
+        vec![]
+    } else {
+        cli.listen
+            .iter()
+            .map(|s| s.parse())
+            .collect::<Result<Vec<_>, _>>()?
+    };
 
     let dial: Vec<Multiaddr> = cli
         .dial
@@ -70,7 +73,6 @@ async fn main() -> Result<()> {
     let mut seen_messages: HashSet<[u8; 32]> = HashSet::new();
 
     let mut hello_timer = tokio::time::interval(Duration::from_secs(5));
-    let mut peer_list_timer = tokio::time::interval(Duration::from_secs(9));
     let mut ping_timer = tokio::time::interval(Duration::from_secs(7));
     let mut fake_block_timer = tokio::time::interval(Duration::from_secs(15));
 
@@ -79,7 +81,7 @@ async fn main() -> Result<()> {
             _ = hello_timer.tick() => {
                 let listen_addrs = net.known_listeners();
 
-                net.publish_message(
+                let _ = net.publish_message(
                     topics::TOPIC_PEERS,
                     NetworkMessage::PeerHello {
                         listen_addrs,
@@ -89,19 +91,10 @@ async fn main() -> Result<()> {
                 info!("sent PeerHello");
             }
 
-            _ = peer_list_timer.tick() => {
-                net.publish_message(
-                    topics::TOPIC_PEERS,
-                    NetworkMessage::PeerListRequest,
-                )?;
-
-                info!("sent PeerListRequest");
-            }
-
             _ = ping_timer.tick() => {
                 let nonce = now_nonce();
 
-                net.publish_message(
+                let _ = net.publish_message(
                     topics::TOPIC_HEALTH,
                     NetworkMessage::Ping { nonce },
                 )?;
@@ -113,7 +106,7 @@ async fn main() -> Result<()> {
                 let fake_bytes = format!("fake block from {} at {}", cli.name, now_nonce()).into_bytes();
                 let block_hash_hex = blake3::hash(&fake_bytes).to_hex().to_string();
 
-                net.publish_message(
+                let _ = net.publish_message(
                     topics::TOPIC_PROPOSAL,
                     NetworkMessage::FakeBlockProposal {
                         height: 1,
@@ -145,7 +138,7 @@ async fn main() -> Result<()> {
                             msg.envelope.from_peer
                         );
 
-                        net.publish_message(
+                        let _ = net.publish_message(
                             topics::TOPIC_HEALTH,
                             NetworkMessage::Pong { nonce },
                         )?;
@@ -179,22 +172,16 @@ async fn main() -> Result<()> {
 
                         let peers = known_peers.values().cloned().collect::<Vec<_>>();
 
-                        net.publish_message(
+                        let _ = net.publish_message(
                             topics::TOPIC_PEERS,
                             NetworkMessage::PeerListResponse { peers },
                         )?;
                     }
 
                     NetworkMessage::PeerListRequest => {
-                        println!(
-                            "← PeerListRequest from {} ({})",
-                            msg.envelope.node_name,
-                            msg.envelope.from_peer
-                        );
-
                         let peers = known_peers.values().cloned().collect::<Vec<_>>();
 
-                        net.publish_message(
+                        let _ = net.publish_message(
                             topics::TOPIC_PEERS,
                             NetworkMessage::PeerListResponse { peers },
                         )?;
@@ -223,7 +210,7 @@ async fn main() -> Result<()> {
                             msg.envelope.node_name
                         );
 
-                        net.publish_message(
+                        let _ = net.publish_message(
                             topics::TOPIC_VOTE,
                             NetworkMessage::FakeVote {
                                 height,
@@ -243,14 +230,6 @@ async fn main() -> Result<()> {
                             height,
                             block_hash_hex,
                             approve,
-                            msg.envelope.node_name
-                        );
-                    }
-
-                    NetworkMessage::RawBytes { bytes } => {
-                        println!(
-                            "← RawBytes len={} from {}",
-                            bytes.len(),
                             msg.envelope.node_name
                         );
                     }
