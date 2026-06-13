@@ -7,9 +7,9 @@ edition = "2024"
 ul_types = { package = "ul-types", path = "../ul-types" }
 ul_crypto = { package = "ul-crypto", path = "../ul-crypto" }
 ul_keystore = { package = "ul-keystore", path = "../ul-keystore" }
-ul_state = { package = "ul-state", path = "../ul-state" }
 ul_consensus = { package = "ul-consensus", path = "../ul-consensus" }
 ul_p2p = { package = "ul-p2p", path = "../ul-p2p" }
+ul_ledger = { package = "ul-ledger", path = "../ul-ledger" }
 
 anyhow = "1"
 bincode = "1.3"

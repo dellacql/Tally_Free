@@ -1,10 +1,10 @@
-use anyhow::{Result, anyhow, ensure};
+use anyhow::{anyhow, ensure, Result};
 use argon2::Argon2;
-use chacha20poly1305::{ChaCha20Poly1305, KeyInit, aead::Aead};
+use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use num_bigint::BigUint;
 use num_traits::Zero;
-use rand::{RngCore, rngs::OsRng};
+use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use sled::{Db, Tree};
 use std::collections::{BTreeMap, BTreeSet};
@@ -143,8 +143,7 @@ impl Ledger {
     pub fn meta(&self) -> Result<ChainMeta> {
         let meta = self.meta_tree()?;
 
-        let chain_id =
-            read_string(&meta, "chain_id")?.unwrap_or_else(|| "tally-free-dev".to_string());
+        let chain_id = read_string(&meta, "chain_id")?.unwrap_or_else(|| "tally-free-dev".to_string());
         let height = read_u64(&meta, "height")?.unwrap_or(0);
         let head_hash = read_hash(&meta, "head_hash")?.unwrap_or([0u8; 32]);
         let genesis_hash = read_hash(&meta, "genesis_hash")?.unwrap_or([0u8; 32]);
@@ -179,10 +178,8 @@ impl Ledger {
 
         for row in self.nonces_tree()?.iter() {
             let (k, v) = row?;
-            out.nonces.insert(
-                account_from_key(&k)?,
-                u64::from_be_bytes(v.as_ref().try_into()?),
-            );
+            out.nonces
+                .insert(account_from_key(&k)?, u64::from_be_bytes(v.as_ref().try_into()?));
         }
 
         Ok(out)
@@ -279,10 +276,7 @@ impl Ledger {
 
         let genesis = &blocks[0];
 
-        ensure!(
-            genesis.header.height == 0,
-            "first synced block must be genesis"
-        );
+        ensure!(genesis.header.height == 0, "first synced block must be genesis");
         ensure!(
             genesis.header.parent_hash == [0u8; 32],
             "genesis parent must be zero"
@@ -389,10 +383,7 @@ impl Ledger {
             return Ok(out);
         }
 
-        let last = std::cmp::min(
-            meta.height,
-            from_height.saturating_add(limit).saturating_sub(1),
-        );
+        let last = std::cmp::min(meta.height, from_height.saturating_add(limit).saturating_sub(1));
 
         for height in from_height..=last {
             if let Some(block) = self.block_by_height(height)? {
@@ -405,14 +396,8 @@ impl Ledger {
     pub fn commit_block(&self, block: &Block) -> Result<Hash32> {
         let meta = self.meta()?;
 
-        ensure!(
-            block.header.height == meta.height + 1,
-            "bad height continuity"
-        );
-        ensure!(
-            block.header.parent_hash == meta.head_hash,
-            "bad parent hash"
-        );
+        ensure!(block.header.height == meta.height + 1, "bad height continuity");
+        ensure!(block.header.parent_hash == meta.head_hash, "bad parent hash");
         ensure!(block.header.chain_id == meta.chain_id, "wrong chain id");
 
         self.validate_block_shape(block)?;
@@ -485,10 +470,7 @@ impl Ledger {
     }
 
     pub fn validate_block_shape(&self, block: &Block) -> Result<()> {
-        ensure!(
-            block.header.tx_root == tx_root(&block.txs),
-            "tx root mismatch"
-        );
+        ensure!(block.header.tx_root == tx_root(&block.txs), "tx root mismatch");
         ensure!(
             block.txs.len() <= block.header.capacity.max_txs,
             "too many txs"
@@ -706,15 +688,14 @@ fn apply_tx_to_snapshot(ss: &mut StateSnapshot, tx: &SignedTx) -> Result<()> {
         }
 
         TxKind::Transfer { to, amount } => {
-            ensure!(
-                !amount.is_zero(),
-                "transfer amount must be greater than zero"
-            );
+            ensure!(!amount.is_zero(), "transfer amount must be greater than zero");
 
             debit(&mut ss.balances, &tx.from, amount)?;
             credit(&mut ss.balances, to, amount);
 
-            ss.nonces.entry(to.clone()).or_insert(0);
+            ss.nonces
+                .entry(to.clone())
+                .or_insert(0);
         }
 
         TxKind::Stake { amount } => {
@@ -725,10 +706,7 @@ fn apply_tx_to_snapshot(ss: &mut StateSnapshot, tx: &SignedTx) -> Result<()> {
         }
 
         TxKind::Unstake { amount } => {
-            ensure!(
-                !amount.is_zero(),
-                "unstake amount must be greater than zero"
-            );
+            ensure!(!amount.is_zero(), "unstake amount must be greater than zero");
 
             debit(&mut ss.stake, &tx.from, amount)?;
             credit(&mut ss.balances, &tx.from, amount);
